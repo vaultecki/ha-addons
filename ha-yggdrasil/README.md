@@ -40,6 +40,34 @@ eine Verbindung zum oeffentlichen Yggdrasil-Netz oeffne `/data/yggdrasil.conf`
 mehrere Eintraege aus der offiziellen Public-Peer-Liste ein:
 https://publicpeers.neilalexander.dev/
 
+## Firewall (wichtig!)
+
+Weil dieses Addon mit `host_network: true` läuft, teilt es sich den Netzwerk-Stack
+mit dem gesamten Host. **Ohne zusätzlichen Schutz wäre über deine Yggdrasil-IP
+nicht nur Home Assistant erreichbar, sondern jeder Dienst deines Hosts**
+(MQTT, Samba, SSH, etc. — alles, was irgendein anderes Addon oder HA OS selbst
+auf dem Host offen hat).
+
+Deshalb setzt `run.sh` bei jedem Start automatisch `ip6tables`-Regeln, die auf
+dem virtuellen `tun0`-Interface (= der reine Yggdrasil-Overlay-Traffic) nur
+genau einen TCP-Port sowie ICMPv6 (für Ping/Diagnose) durchlassen. Alles
+andere wird verworfen. Der Port ist über die Addon-Option `allowed_port`
+einstellbar (Standard: `8123`, der normale Home-Assistant-Port — passt auch
+für die Android/iOS-App).
+
+Die Regeln landen im Netfilter des **Hosts** (nicht nur im Container) und
+werden bei jedem Neustart des Addons zuerst sauber entfernt und neu gesetzt,
+damit sich nichts doppelt aufbaut.
+
+**Annahme:** Yggdrasil erzeugt sein TUN-Interface standardmäßig als `tun0`.
+Falls du in der Konfiguration `IfName` manuell geändert hast oder aus anderem
+Grund ein anderes Interface entsteht, musst du `tun0` in `run.sh` entsprechend
+anpassen (zu sehen in den Addon-Logs nach der Zeile `Interface name: ...`).
+
+Falls du zusätzliche Ports brauchst (z.B. für weitere Dienste), kannst du in
+`run.sh` weitere `ip6tables -A YGGDRASIL_FILTER -p tcp --dport ... -j ACCEPT`
+Zeilen ergänzen.
+
 ## Konfiguration zuruecksetzen
 
 Falls du wirklich eine neue Identitaet/IP brauchst: Addon-Option

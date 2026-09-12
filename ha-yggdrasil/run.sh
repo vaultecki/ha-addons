@@ -48,5 +48,39 @@ fi
 echo "[yggdrasil] Yggdrasil IPv6-Adresse (bleibt jetzt dauerhaft erhalten):"
 yggdrasil -address -useconffile "${CONF_FILE}"
 
+# --- Firewall: nur den erlaubten Port ueber Yggdrasil erreichbar machen ---
+#
+# Wegen "host_network: true" teilt sich dieses Addon den Netzwerk-Namespace mit
+# dem gesamten Host. Ohne Einschraenkung waere daher NICHT nur Home Assistant,
+# sondern jeder Dienst des Hosts (mqtt, samba, ssh, ...) ueber die Yggdrasil-IP
+# erreichbar. Diese Regeln beschraenken eingehenden Traffic auf dem virtuellen
+# tun0-Interface (das ist ausschliesslich der Yggdrasil-Overlay-Traffic) auf
+# genau den konfigurierten Port.
+#
+# Die Regeln landen im Kernel-Netfilter des HOSTS und ueberleben daher einen
+# Addon-Neustart. Deshalb werden alte Regeln dieses Addons zuerst sauber
+# entfernt, bevor sie neu gesetzt werden - sonst haeufen sich Duplikate an.
+ALLOWED_PORT="8123"
+if [ -f "${OPTIONS_FILE}" ]; then
+    ALLOWED_PORT="$(jq -r '.allowed_port // 8123' "${OPTIONS_FILE}" 2>/dev/null || echo 8123)"
+fi
+
+echo "[yggdrasil] Setze Firewall: ueber tun0 ist nur Port ${ALLOWED_PORT} (TCP) sowie ICMPv6 erreichbar."
+
+ip6tables -D INPUT -i tun0 -j YGGDRASIL_FILTER 2>/dev/null || true
+ip6tables -F YGGDRASIL_FILTER 2>/dev/null || true
+ip6tables -X YGGDRASIL_FILTER 2>/dev/null || true
+
+if ip6tables -N YGGDRASIL_FILTER 2>/dev/null; then
+    ip6tables -A YGGDRASIL_FILTER -p icmpv6 -j ACCEPT
+    ip6tables -A YGGDRASIL_FILTER -p tcp --dport "${ALLOWED_PORT}" -j ACCEPT
+    ip6tables -A YGGDRASIL_FILTER -j DROP
+    ip6tables -I INPUT -i tun0 -j YGGDRASIL_FILTER
+    echo "[yggdrasil] Firewall gesetzt."
+else
+    echo "[yggdrasil] WARNUNG: Firewall-Regeln konnten NICHT gesetzt werden (ip6tables fehlgeschlagen)."
+    echo "[yggdrasil] Ueber Yggdrasil sind aktuell ALLE Ports dieses Hosts erreichbar!"
+fi
+
 echo "[yggdrasil] Starte Yggdrasil..."
 exec yggdrasil -useconffile "${CONF_FILE}"
