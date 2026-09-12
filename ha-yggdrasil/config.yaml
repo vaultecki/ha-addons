@@ -1,5 +1,5 @@
 name: "Yggdrasil (persistent)"
-version: "0.0.1"
+version: "0.0.2"
 slug: ha_yggdrasil
 description: >-
   Verbindet Home Assistant mit dem Yggdrasil-Overlay-Netzwerk (feste IPv6-Adresse,
@@ -8,11 +8,8 @@ description: >-
   ueberlebt Neustarts und Updates, sodass sich die IP nicht mehr aendert.
 url: "https://github.com/yggdrasil-network/yggdrasil-go"
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
 init: false
 startup: services
 boot: auto
