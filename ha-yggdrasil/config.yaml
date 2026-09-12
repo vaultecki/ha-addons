@@ -1,6 +1,6 @@
 name: "Yggdrasil (persistent)"
-version: "1.0.0"
-slug: yggdrasil_persistent
+version: "0.0.1"
+slug: ha_yggdrasil
 description: >-
   Verbindet Home Assistant mit dem Yggdrasil-Overlay-Netzwerk (feste IPv6-Adresse,
   eingehende Verbindungen, lokale Peer-Discovery). Im Unterschied zum Original wird
